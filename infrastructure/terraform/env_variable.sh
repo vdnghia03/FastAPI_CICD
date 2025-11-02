@@ -1,0 +1,1 @@
+export ARM_SUBSCRIPTION_ID="805aa807-f7a0-4e2b-98ce-22f8cbc8750d"
