@@ -253,6 +253,14 @@ GitHub Actions cần quyền truy cập vào Azure. Chúng ta sử dụng Azure 
 
 1.  **Tạo Service Principal (SPN):** Bạn cần chạy lệnh `az ad sp create-for-rbac` trong Azure CLI. Lệnh này nên chỉ định quyền Contributor và Scope là Subscription ID hoặc Resource Group của bạn.
     *(Lệnh này có thể phức tạp và phải đảm bảo cú pháp chính xác)*.
+```bash
+az ad sp create-for-rbac \
+  --name "github-deploy-sp" \
+  --role contributor \
+  --scopes /subscriptions/805aa807-f7a0-4e2b-98ce-22f8cbc8750d/resourceGroups/fastapi-resource-group \
+  --sdk-auth
+
+```
 
 2.  **Lưu Secret trên GitHub:**
     *   Truy cập **Settings** của Repository trên GitHub > **Secrets** > **Actions**.
