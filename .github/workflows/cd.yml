@@ -1,9 +1,10 @@
-name: Deploy FastAPI to AKS
+name: CD - Deploy FastAPI to AKS
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
-      - main 
+      - main
 
 env:
   AZURE_RESOURCE_GROUP: "fastapi-resource-group"
@@ -12,7 +13,8 @@ env:
   IMAGE_NAME: "fastapi-app"
 
 jobs:
-  build-and-deploy:
+  deploy:
+    if: github.event.pull_request.merged == true  # ✅ chỉ chạy khi PR merge
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +42,7 @@ jobs:
         run: |
           az aks get-credentials --resource-group $AZURE_RESOURCE_GROUP --name $AZURE_AKS_CLUSTER
 
-      - name: Update Deployment in AKS
+      - name: Deploy to AKS
         run: |
           kubectl set image deployment/fastapi-app fastapi=$ACR_NAME.azurecr.io/$IMAGE_NAME:latest
           kubectl rollout restart deployment fastapi-app
