@@ -269,46 +269,101 @@ az ad sp create-for-rbac \
 
 #### Hướng dẫn Code (Workflow YAML)
 
-Tạo file `deploy.yaml` trong thư mục `.github/workflows/`. Workflow này sẽ thực hiện: đăng nhập Azure, build Docker image, push image lên ACR, và cập nhật Deployment trên AKS.
+Tạo file `ci.yaml` và `cd.yaml` trong thư mục `.github/workflows/`. Workflow này sẽ thực hiện **ci** gồm: flake, pytest, ... còn **ci** như đăng nhập Azure, build Docker image, push image lên ACR, và cập nhật Deployment trên AKS. Workflow này chỉ chạy khi merge pull request vào nhánh main.
 
+- CI
 ```yaml
-# Cấu trúc cơ bản của file GitHub Actions deploy.yaml
-name: Deploy Fast API to AKS
+name: CI - Test FastAPI Code
 
 on:
-  push:
+  pull_request:
     branches:
-      - main # Chạy khi push lên nhánh main
+      - main
+      - develop
 
 jobs:
-  build-and-deploy:
+  lint-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      # 1. Checkout code
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      # 2. Đăng nhập vào Azure
-      - uses: azure/login@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }} # Sử dụng Secret đã tạo
-      
-      # 3. Xây dựng và đẩy Docker Image
-      - name: Build and push image to ACR
-        uses: azure/docker-login@v1
-        # ... cấu hình ACR
-      - run: docker build -t <ACR_NAME>.azurecr.io/fastapi-app:latest . #
-      - run: docker push <ACR_NAME>.azurecr.io/fastapi-app:latest #
+          python-version: "3.11"
 
-      # 4. Thiết lập Kubectl và Deploy lên AKS
-      - uses: azure/aks-set-context@v1
-        with:
-          # Cấu hình cụm AKS (Sử dụng Resource Group và Cluster Name)
-          resource-group: fast-api-Resource-Group 
-          cluster-name: fast-api-aks-cluster
-      
-      # 5. Áp dụng cấu hình K8s (deployment.yaml và service.yaml)
-      - run: kubectl apply -f infrastructure/kubernetes/deployment.yaml #
-      - run: kubectl apply -f infrastructure/kubernetes/service.yaml #
-      # ... (Có thể cần lệnh restart hoặc kiểm tra trạng thái)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirement.txt
+          pip install flake8 pytest
+
+      - name: Run flake8 Lint
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Run Unit Tests
+        run: |
+          pytest -v
+
 ```
-Sau khi push cấu hình này lên GitHub, GitHub Actions sẽ tự động chạy và triển khai ứng dụng của bạn.
+
+- CD
+```yaml
+name: CD - Deploy FastAPI to AKS
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+env:
+  AZURE_RESOURCE_GROUP: "fastapi-resource-group"
+  AZURE_AKS_CLUSTER: "fastapi-aks-cluster"
+  ACR_NAME: "acr73061"
+  IMAGE_NAME: "fastapi-app"
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true  # ✅ chỉ chạy khi PR merge
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:latest .
+
+      - name: Login to Azure Container Registry (ACR)
+        run: |
+          az acr login --name $ACR_NAME
+
+      - name: Push Docker Image to ACR
+        run: |
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials --resource-group $AZURE_RESOURCE_GROUP --name $AZURE_AKS_CLUSTER
+
+      - name: Deploy to AKS
+        run: |
+          kubectl set image deployment/fastapi-app fastapi=$ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+          kubectl rollout restart deployment fastapi-app
+          kubectl rollout status deployment/fastapi-app
+
+
+```
+
+Sau khi merge vào main trên GitHub, GitHub Actions sẽ tự động chạy và triển khai ứng dụng của bạn.
