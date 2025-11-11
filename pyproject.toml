@@ -1,0 +1,36 @@
+# pyproject.toml
+
+[build-system]
+# Yêu cầu setuptools và wheel để xây dựng gói
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "analytics-chatbot"
+version = "0.1.0"
+authors = [
+    {name = "VDN", email = "Nqiaxvd@gmail.com"},
+]
+description = "FastAPI application for analytics chatbot."
+readme = "README.md"
+requires-python = ">=3.8"
+
+# **Quan trọng:** Bạn cần liệt kê các dependencies cần thiết cho gói của mình.
+# Tuy nhiên, vì bạn đã dùng -e . (editable install)
+# và install_requires=[] trong setup.py cũ, các dependencies
+# được quản lý chủ yếu qua requirements.txt.
+# Để đơn giản, ta chỉ thêm các dependency mà gói của bạn cần để chạy.
+dependencies = [
+    # Đây là các dependency cốt lõi mà gói analytics_chatbot cần
+    "fastapi==0.115.2",
+    "uvicorn==0.32.0",
+    "langchain==0.3.27",             
+    "langchain-core==0.3.77",         
+    "langchain-community==0.3.27",   
+
+    "langchain-google-genai==2.1.9",
+    "langchain-pinecone==0.2.13",    
+    "pypdf==5.6.1",
+    "python-dotenv==1.1.0",
+    "python-multipart"
+]
