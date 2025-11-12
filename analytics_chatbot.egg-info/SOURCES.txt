@@ -1,6 +1,5 @@
 pyproject.toml
 setup.cfg
-setup.py
 analytics_chatbot.egg-info/PKG-INFO
 analytics_chatbot.egg-info/SOURCES.txt
 analytics_chatbot.egg-info/dependency_links.txt
@@ -13,5 +12,6 @@ backend/utils/helper.py
 backend/utils/prompt.py
 backend/utils/store_index.py
 frontend/__init__.py
+frontend/chat_interface.py
 tests/__init__.py
 tests/test_main.py
