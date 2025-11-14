@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  fastapi-app:
+    build:
+      context: .  # Đây là build context, thư mục hiện tại
+      dockerfile: Dockerfile  # Tên Dockerfile
+      args:
+        PINECONE_API_KEY: ${PINECONE_API_KEY}
+        GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"

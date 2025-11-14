@@ -1,5 +1,98 @@
 
-## Note Triển Khai FastAPI lên Azure AKS bằng DevOps
+# RAG Chatbot for Analytics
+
+This project aims to create a chatbot that learns from the **Analytics Stack Guidebook** and uses a large language model (Gemini Flash 2.5) to generate in-depth and accurate results. The approach is based on **Retrieval-Augmented Generation (RAG)**, combining document retrieval and natural language generation to provide users with relevant answers from the guidebook.
+
+![](./FastAPI_RAG.png)
+
+## Project Overview
+
+The chatbot allows users to interact and ask questions based on their internal data, making it easier to find and summarize the information they need from the **Analytics Stack Guidebook**.
+
+## I. Research RAG
+
+### Workflow
+
+1. **Document Extraction**:
+   - Load data from PDF files (Analytics Stack Guidebook) using `PyPDFLoader` and `DirectoryLoader`.
+   
+   ```python
+   def load_pdf_files(data):
+       loader = DirectoryLoader(data, glob="*.pdf", loader_cls=PyPDFLoader)
+       documents = loader.load()
+       return documents
+
+
+2. **Data Preprocessing**:
+
+   * Filter extracted documents to retain only the necessary content.
+
+   ```python
+   def filter_to_minial_docs(docs: list[Document]) -> List[Document]:
+       minimal_docs: List[Document] = []
+       for doc in docs:
+           src = doc.metadata.get("source")
+           minimal_docs.append(Document(page_content=doc.page_content, metadata={"source": src}))
+       return minimal_docs
+   ```
+
+3. **Integration with Gemini**:
+
+   * Use the **Gemini Flash 2.5 model** for enhancing the chatbot's capabilities and generating responses.
+
+4. **Retrieval-Augmented Generation (RAG)**:
+
+   * Store the processed documents in Pinecone and retrieve relevant data for answering user queries.
+
+5. **Deployment**:
+
+   * Deploy the solution using **Azure ACR** (Azure Container Registry), **Azure AKS** (Azure Kubernetes Service), and manage CICD through **GitHub Actions**.
+
+### Result
+
+The chatbot provides users with the ability to query the **Analytics Stack Guidebook**. It extracts and summarizes information, helping users quickly find and understand the concepts that are most relevant to their needs.
+
+
+### How to Run
+
+1. Clone the repository:
+```bash
+  git clone 
+
+```
+
+  Tạo file .env
+```bash
+  PINECONE_API_KEY="your pinecone api key"
+  GOOGLE_API_KEY="your google api key"
+```
+
+  
+
+2. Install required dependencies:
+
+```bash
+   pip install -e .
+```
+
+3. Run the FastAPI server:
+
+```bash
+    uvicorn main:app --reload
+```
+
+4. Access the chatbot API at `http://localhost:8000`.
+
+### Technologies
+
+* **Backend**: FastAPI
+* **Vector Database**: Pinecone
+* **LLM**: Gemini Flash 2.5
+* **Deployment**: Azure AKS, Azure ACR
+* **CI/CD**: GitHub Actions
+
+---
+## Deploy Azure 
 
 Quy trình này mô tả cách sử dụng Terraform để tạo cơ sở hạ tầng (Infrastructure as Code), Docker để đóng gói ứng dụng, và GitHub Actions cho CI/CD (Tích hợp liên tục/Triển khai liên tục).
 
@@ -195,19 +288,39 @@ az aks get-credentials --resource-group fast-api-Resource-Group --name fast-api-
     *(Lưu ý: Nội dung YAML chi tiết được tham khảo từ cấu trúc K8s thông thường, vì nguồn chỉ nhắc đến việc copy/paste file này).*
     ```yaml
     # Deployment YAML
+        
     apiVersion: apps/v1
     kind: Deployment
     metadata:
-      name: fast-api-deployment
+      name: fastapi-app
     spec:
       replicas: 2
+      selector:
+        matchLabels:
+          app: fastapi
       template:
+        metadata:
+          labels:
+            app: fastapi
         spec:
           containers:
-          - name: fast-api-container
-            image: <ACR_NAME>.azurecr.io/fastapi-app:latest # Image từ ACR
+          - name: fastapi
+            image: acr18490.azurecr.io/fastapi-app:latest
             ports:
-            - containerPort: 80 #
+            - containerPort: 8000
+            imagePullPolicy: Always
+            env:
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pinecone-secrets
+                  key: pinecone-api-key
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-secrets
+                  key: google-api-key
+
     # ...
     ```
 
@@ -226,6 +339,10 @@ az aks get-credentials --resource-group fast-api-Resource-Group --name fast-api-
         targetPort: 80
       # ...
     ```
+
+> kubectl create secret generic pinecone-secrets --from-literal=pinecone-api-key="your_pinecone_api_key"
+> kubectl create secret generic google-secrets --from-literal=google-api-key="your_google_api_key"
+
 
 3.  **Áp dụng các file YAML:**
     ```bash
